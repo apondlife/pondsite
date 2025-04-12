@@ -5,15 +5,20 @@
 }
 
 .Pond {
+  overflow: hidden;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 100%;
+  font-family: serif;
   user-select: none;
-  padding: 6.4% 18%;
 
   @include mobile {
     padding: 6.4% 5%;
+  }
+
+  @include desktop {
+    padding: 6.4% 18%;
   }
 
   img {
@@ -41,7 +46,6 @@
 
   %entity {
     position: absolute;
-    font-family: sans-serif;
   }
 
   .Water {

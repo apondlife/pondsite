@@ -85,7 +85,7 @@
       transform: rotate(-1deg);
 
       @include mobile {
-        font-size: 7rem;
+        font-size: 22vw;
       }
 
       @include desktop {
@@ -103,7 +103,7 @@
       transform: translateY(0.5rem) rotate(-2deg);
 
       @include mobile {
-        font-size: 6rem;
+        font-size: 20vw;
       }
 
       @include desktop {
@@ -128,9 +128,16 @@
   }
 
   &-email {
-    font-size: 3rem;
     transform: rotate(2deg);
     color: $color-classic-link;
+
+    @include mobile {
+      font-size: 11vw;
+    }
+
+    @include desktop {
+      font-size: 3rem;
+    }
   }
 
   &-bad {
