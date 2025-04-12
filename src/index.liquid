@@ -109,3 +109,112 @@ description: welcome to the pondlife website
     </section>
   </div>
 </article>
+
+<script type="module">
+  // -- constants --
+  const pX = "--x"
+  const pY = "--y"
+
+  // -- props --
+  let lastTime = 0
+
+  // the number of entities
+  let numEntities = 0
+
+  /** @type {Array<HTMLElement>} */
+  const elements = []
+
+  /** @type {Array<{ x: number, y: number, r: boolean }>} */
+  const transforms = []
+
+  /** @type {Array<{ duration: number, x0: number, dx: number, elapsed: number }>} */
+  const animations = []
+
+  // -- lifetime --
+  function Init() {
+    const $pond = document.getElementById("pond")
+
+    /** @type {HTMLCollectionOf<HTMLElement>} */
+    const $pondWaters = $pond.getElementsByClassName("Water")
+    for (const $pondWater of $pondWaters) {
+      numEntities += 1
+
+      elements.push(
+        $pondWater
+      )
+
+      const x = GetPercentStyle($pondWater, pX)
+      transforms.push({
+        x,
+        y: GetPercentStyle($pondWater, pY),
+        r: false
+      })
+
+      const duration = 8 * 1000
+      animations.push({
+        duration,
+        x0: x,
+        dx: 0.5,
+        elapsed: Math.random() * duration,
+      })
+    }
+
+    requestAnimationFrame(Loop)
+  }
+
+  /**
+   * @param {DOMHighResTimestamp} time
+   **/
+  function Loop(time) {
+    // update delta
+    const delta = time - lastTime
+    lastTime = time
+
+    // run animations
+    for (let id = 0; id < numEntities; id++) {
+      // advance animation
+      const a = animations[id]
+      a.elapsed = (a.elapsed + delta) % a.duration
+
+      // make animation symmetric: [0..1] -> [0..1..0]
+      let k = a.elapsed / a.duration
+      k = (Math.sin(((2 * k) - 0.5) * Math.PI) / 2) + 0.5
+
+      // update position
+      const t = transforms[id]
+      t.x = a.x0 + a.dx * k
+    }
+
+    // apply transforms
+    for (let id = 0; id < numEntities; id++) {
+      const $el = elements[id]
+
+      const t = transforms[id]
+      SetPercentStyle($el, pX, t.x)
+      SetPercentStyle($el, pY, t.y)
+    }
+
+    requestAnimationFrame(Loop)
+  }
+
+  // -- queries --
+  /**
+   * @param {HTMLElement} $el
+   * @param {string} name
+   **/
+  function GetPercentStyle($el, name) {
+    return Number.parseFloat($el.style.getPropertyValue(name))
+  }
+
+  /**
+   * @param {HTMLElement} $el
+   * @param {string} name
+   * @param {number} value
+   **/
+  function SetPercentStyle($el, name, value) {
+    $el.style.setProperty(name, `${value}%`)
+  }
+
+  // -- bootstrap --
+  Init()
+</script>
