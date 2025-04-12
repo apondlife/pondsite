@@ -102,10 +102,10 @@ description: welcome to the pondlife website
     </section>
 
     <section>
-      <p class="Life Protozoa" style="--x: 83%; --y: 13%; --a: 8deg;">◬</p>
-      <p class="Life Stentor" style="--x: 53.9%; --y: 53.8%;">◌</p>
-      <p class="Life Ameoba" style="--x: 74.5%; --y: 67%; --a: 102deg;">◠</p>
-      <p class="Life Daphnia" style="--x: 22%; --y: 62%; --a: 21deg;">◈</p>
+      {% render "life/Life", name: "protozoa", style: "--x: 83%; --y: 13%;" %}
+      {% render "life/Life", name: "stentor", style: "--x: 53.9%; --y: 53.8%;" %}
+      {% render "life/Life", name: "ameoba", style: "--x: 74.5%; --y: 67%;" %}
+      {% render "life/Life", name: "daphnia", href: "/links", style: "--x: 22%; --y: 62%;" %}
     </section>
   </div>
 </article>

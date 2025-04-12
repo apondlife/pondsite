@@ -1,0 +1,150 @@
+@use "core" as *;
+
+.Links {
+  display: flex;
+  justify-content: center;
+
+  // -- icon --
+  .Life {
+    position: fixed;
+
+    @include mobile {
+      left: 13vw;
+      top: 4vh;
+      font-size: 3rem;
+    }
+
+    @include desktop {
+      left: 5vw;
+      top: 5vh;
+      font-size: 8rem;
+    }
+  }
+
+  // -- layout --
+  %center-list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  &-tree {
+    @extend %center-list;
+
+    width: 100%;
+    padding: 10vh 40px;
+  }
+
+  &-list {
+    @extend %center-list;
+  }
+
+  &-title {
+    margin-bottom: 40px;
+    padding-bottom: 40px;
+    border-bottom: 4px dashed $color-pondlife;
+    transform: rotate(3deg);
+
+    @include mobile {
+      font-size: 25vw;
+    }
+
+    @include desktop {
+      font-size: 8rem;
+    }
+  }
+
+  %list-header {
+    margin-top: 40px
+  }
+
+  &-listHeader {
+    @extend %list-header;
+    margin-bottom: 20px;
+    border-bottom: 1px dashed black;
+  }
+
+  &-contactHeader {
+    @extend %list-header;
+    height: 0;
+    overflow: hidden;
+  }
+
+  // -- links --
+  &-steam {
+    display: flex;
+    flex-direction: column;
+
+    > *:nth-child(1) {
+      font-size: 3rem;
+      transform: rotate(-1deg);
+    }
+
+    > *:nth-child(2) {
+      align-self: flex-end;
+      transform: rotate(-1deg);
+
+      @include mobile {
+        font-size: 7rem;
+      }
+
+      @include desktop {
+        margin-right: 15%;
+        font-size: 9rem;
+      }
+
+      > a {
+        display: inline-block;
+      }
+    }
+
+    .Discone {
+      display: inline-block;
+      transform: translateY(0.5rem) rotate(-2deg);
+
+      @include mobile {
+        font-size: 6rem;
+      }
+
+      @include desktop {
+        font-size: 8rem;
+      }
+    }
+  }
+
+  &-website {
+    font-size: 2rem;
+    transform: rotate(1deg);
+  }
+
+  &-bluesky {
+    font-size: 1.3rem;
+    transform: rotate(-1deg);
+  }
+
+  &-mastodon {
+    font-size: 1.6rem;
+    transform: rotate(2deg);
+  }
+
+  &-email {
+    font-size: 3rem;
+    transform: rotate(2deg);
+    color: $color-classic-link;
+  }
+
+  &-bad {
+    display: flex;
+    align-items: baseline;
+    font-size: 0.8rem;
+
+    > *:nth-child(1) {
+      transform: rotate(1deg);
+    }
+
+    > *:nth-child(2) {
+      margin-left: -1rem;
+      transform: translateY(0.3rem) rotate(-1deg);
+    }
+  }
+}

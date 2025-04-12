@@ -1,5 +1,9 @@
 @use "_includes/core" as *;
 
+.Home {
+  height: 100%;
+}
+
 .Pond {
   display: flex;
   justify-content: center;
@@ -34,88 +38,82 @@
     margin-top: var(--t);
     transform: rotate(var(--a));
   }
-}
 
-%entity {
-  position: absolute;
-  font-family: sans-serif;
-}
-
-.Water {
-  @extend %entity;
-
-  overflow: hidden;
-  display: inline-flex;
-  flex-direction: column;
-  left: var(--x);
-  top: var(--y);
-  width: var(--w);
-  transform: rotate(var(--a));
-  color: #cbe8e7;
-  line-height: 1.5rem;
-
-  > li {
-    overflow: hidden;
+  %entity {
+    position: absolute;
+    font-family: sans-serif;
   }
-}
 
-.Bank {
-  @extend %entity;
+  .Water {
+    @extend %entity;
 
-  display: inline-flex;
-  flex-direction: column;
-  left: var(--x);
-  top: var(--y);
-  width: var(--w);
-  transform: rotate(var(--a));
-  color: #d8d69e;
-
-  > li {
     overflow: hidden;
+    display: inline-flex;
+    flex-direction: column;
+    left: var(--x);
+    top: var(--y);
+    width: var(--w);
+    transform: rotate(var(--a));
+    color: #cbe8e7;
+    line-height: 1.5rem;
+
+    > li {
+      overflow: hidden;
+    }
   }
-}
 
-.Lily {
-  @extend %entity;
+  .Bank {
+    @extend %entity;
 
-  color: #65d897;
-  font-size: 0.8rem;
-  left: var(--x);
-  top: var(--y);
-}
+    display: inline-flex;
+    flex-direction: column;
+    left: var(--x);
+    top: var(--y);
+    width: var(--w);
+    transform: rotate(var(--a));
+    color: #d8d69e;
 
-.Life {
-  @extend %entity;
+    > li {
+      overflow: hidden;
+    }
+  }
 
-  width: var(--size);
-  height: var(--size);
-  left: var(--x);
-  top: var(--y);
-  transform: rotate(var(--a));
-  line-height: var(--size);
-  cursor: zoom-in;
-}
+  .Lily {
+    @extend %entity;
 
-.Protozoa {
-  --size: 2.2rem;
-  color: #f28afb;
-  font-size: 2rem;
-}
+    color: #65d897;
+    font-size: 0.8rem;
+    left: var(--x);
+    top: var(--y);
+  }
 
-.Stentor {
-  --size: 2.3rem;
-  color: #3a72ff;
-  font-size: 4rem;
-}
+  .Life {
+    @extend %entity;
 
-.Ameoba {
-  --size: 1.8rem;
-  color: #f7e377;
-  font-size: 2rem;
-}
+    width: var(--size);
+    height: var(--size);
+    left: var(--x);
+    top: var(--y);
+    line-height: var(--size);
+  }
 
-.Daphnia {
-  --size: 2.1rem;
-  color: #ffcb9c;
-  font-size: 2rem;
+  .Protozoa {
+    --size: 2.2rem;
+    font-size: 2rem;
+  }
+
+  .Stentor {
+    --size: 2.3rem;
+    font-size: 4rem;
+  }
+
+  .Ameoba {
+    --size: 1.8rem;
+    font-size: 2rem;
+  }
+
+  .Daphnia {
+    --size: 2.1rem;
+    font-size: 2rem;
+  }
 }

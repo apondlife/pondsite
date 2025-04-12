@@ -1,6 +1,8 @@
 // -- resets --
 @use "_includes/core" as *;
+@use "_includes/life/life";
 @use "_includes/home";
+@use "_includes/links";
 
 // -- globals --
 html {
@@ -10,6 +12,18 @@ html {
 
 * {
   font-weight: inherit;
+
+  &::selection {
+    background-color: #ff00ff1e;
+  }
+}
+
+a {
+  color: inherit;
+
+  &:visited {
+    color: inherit;
+  }
 }
 
 // -- Site --
@@ -17,8 +31,13 @@ html {
   height: 100%;
 }
 
-.Site-content {
-  height: 100%;
+// -- Global --
+.Pondlife {
+  color: $color-pondlife;
+}
+
+.Discone {
+  color: $color-discone;
 }
 
 // -- Loading --

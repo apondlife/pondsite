@@ -1,0 +1,11 @@
+<li class="Links-{{ name }}">
+  {% if body %}
+    {{ body }}
+  {% else %}
+    {% if not text %}
+      {% assign text = name %}
+    {% endif %}
+
+    {% render "core/Link", href: href, text: text, external: true %}
+  {% endif %}
+</li>

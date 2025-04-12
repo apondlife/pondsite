@@ -1,0 +1,98 @@
+---
+layout: Page.liquid
+section: links
+title: with pondlinks
+description: links to the pondlife socials, steam page, &c. save a linktree!
+---
+
+<article class="Links-tree">
+  {% render "life/Life" name: "daphnia" href: "/" %}
+
+  <h1 class="Links-title">
+    <span class="Pondlife">pondlife</span>
+  </h1>
+
+  <ul class="Links-list">
+    {% capture steam %}
+      <p>
+        wishlist <span class="Discone">discone</span> on
+      </p>
+
+      <p>
+        {%-
+          render "core/Link"
+            href: "https://store.steampowered.com/app/2888670/pondlife_discone_a_videogame/"
+            text: "steam"
+            external: true
+        -%}
+        <span>?</span>
+      </p>
+    {% endcapture %}
+
+    {%
+      render "links/Link"
+        name: "steam"
+        body: steam
+    %}
+
+    <h2 class="Links-listHeader">
+      follow us on
+    </h2>
+
+    {%
+      render "links/Link"
+        name: "website"
+        href: "/"
+        text: "this website"
+    %}
+
+    {%
+      render "links/Link"
+        name: "bluesky"
+        href: "https://bsky.app/profile/withpondlife.bsky.social"
+    %}
+
+    {%
+      render "links/Link"
+        name: "mastodon"
+        href: "https://mastodon.gamedev.place/@pondlife"
+    %}
+
+    <h2 class="Links-contactHeader">
+      to get in touch
+    </h2>
+
+    {%
+      render "links/Link"
+        name: "email"
+        text: "~*~ email us ~*~"
+        href: "mailto:with@pondlife.games?subject=hi pondlife =)&body=i appreciate e-mail correspondence."
+    %}
+
+    <h2 class="Links-listHeader">
+      if you must, we're on
+    </h2>
+
+    {% capture bad %}
+      {%
+        render "core/Link"
+          text: "instagram"
+          href: "https://www.instagram.com/withpondlife"
+          external: true
+      %}
+
+      {%
+        render "core/Link"
+          text: "twitter"
+          href: "https://twitter.com/withpondlife"
+          external: true
+      %}
+    {% endcapture %}
+
+    {%
+      render "links/Link"
+        name: "bad"
+        body: bad
+    %}
+  </ul>
+</article>
