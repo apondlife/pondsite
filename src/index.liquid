@@ -112,7 +112,12 @@ description: welcome to the pondlife website
 
 <script type="module">
   // -- constants --
-  const P = {
+  const Props = {
+    X: "x",
+    Y: "y",
+  }
+
+  const Css = {
     X: "--x",
     Y: "--y",
     W: "--w",
@@ -129,7 +134,7 @@ description: welcome to the pondlife website
   /** @type {Array<{ x: number, y: number, w: number }>} */
   const transforms = []
 
-  /** @type {Array<Array<{ duration: number, dx: number, dy: number, xi: number, yi: number, elapsed: number }>>} */
+  /** @type {Array<Array<{ prop: string, delta: number, initial: number, duration: number, elapsed: number }>>} */
   const animations = []
 
   /** @type {Array<{ $el: HTMLElement, type: "block" | "row" | "point" }>} */
@@ -160,8 +165,8 @@ description: welcome to the pondlife website
   function CreateWaterRow($el) {
     numEntities += 1
 
-    const l = GetPercentStyle($el, P.L)
-    const r = GetPercentStyle($el, P.R)
+    const l = GetPercentStyle($el, Css.L)
+    const r = GetPercentStyle($el, Css.R)
     transforms.push({
       x: l,
       w: 100 - r - l,
@@ -169,11 +174,10 @@ description: welcome to the pondlife website
 
     const duration = 8 * 1000
     animations.push([{
+      prop: Props.X,
       duration,
-      dx: 2,
-      dy: 0,
-      xi: l,
-      yi: 0,
+      delta: 2,
+      initial: l,
       elapsed: Math.random() * duration,
     }])
 
@@ -189,27 +193,25 @@ description: welcome to the pondlife website
   function CreateLily($el) {
     numEntities += 1
 
-    const x = GetPercentStyle($el, P.X)
-    const y = GetPercentStyle($el, P.Y)
+    const x = GetPercentStyle($el, Css.X)
+    const y = GetPercentStyle($el, Css.Y)
     transforms.push({
       x,
       y,
     })
 
-    const duration = 5 * 1000
+    const duration = 10 * 1000
     animations.push([{
+      prop: Props.X,
+      delta: 1,
+      initial: x,
       duration,
-      dx: 1,
-      dy: 0,
-      xi: x,
-      yi: y,
       elapsed: Math.random() * duration,
     }, {
+      prop: Props.Y,
+      delta: 1,
+      initial: y,
       duration,
-      dx: 0,
-      dy: 1,
-      xi: x,
-      yi: y,
       elapsed: Math.random() * duration,
     }])
 
@@ -256,7 +258,7 @@ description: welcome to the pondlife website
 
         // update position
         const t = transforms[id]
-        t.x = a.xi + a.dx * k
+        t[a.prop] = a.initial + a.delta * k
       }
     }
   }
@@ -272,13 +274,13 @@ description: welcome to the pondlife website
       switch (s.type) {
       case "block":
       case "point":
-        SetPercentStyle(s.$el, P.X, t.x)
-        SetPercentStyle(s.$el, P.Y, t.y)
+        SetPercentStyle(s.$el, Css.X, t.x)
+        SetPercentStyle(s.$el, Css.Y, t.y)
         break
 
       case "row":
-        SetPercentStyle(s.$el, P.L, t.x)
-        SetPercentStyle(s.$el, P.R, 100 - t.w - t.x)
+        SetPercentStyle(s.$el, Css.L, t.x)
+        SetPercentStyle(s.$el, Css.R, 100 - t.w - t.x)
         break
       }
     }
