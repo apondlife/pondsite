@@ -112,8 +112,13 @@ description: welcome to the pondlife website
 
 <script type="module">
   // -- constants --
-  const pX = "--x"
-  const pY = "--y"
+  const P = {
+    X: "--x",
+    Y: "--y",
+    W: "--w",
+    L: "--l",
+    R: "--r",
+  }
 
   // -- props --
   let lastTime = 0
@@ -121,45 +126,97 @@ description: welcome to the pondlife website
   // the number of entities
   let numEntities = 0
 
-  /** @type {Array<HTMLElement>} */
-  const elements = []
-
-  /** @type {Array<{ x: number, y: number, r: boolean }>} */
+  /** @type {Array<{ x: number, y: number, w: number }>} */
   const transforms = []
 
-  /** @type {Array<{ duration: number, x0: number, dx: number, elapsed: number }>} */
+  /** @type {Array<Array<{ duration: number, dx: number, dy: number, xi: number, yi: number, elapsed: number }>>} */
   const animations = []
+
+  /** @type {Array<{ $el: HTMLElement, type: "block" | "row" | "point" }>} */
+  const sprites = []
 
   // -- lifetime --
   function Init() {
     const $pond = document.getElementById("pond")
 
-    /** @type {HTMLCollectionOf<HTMLElement>} */
     const $pondWaters = $pond.getElementsByClassName("Water")
     for (const $pondWater of $pondWaters) {
-      numEntities += 1
+      for (const $child of $pondWater.children) {
+        CreateWaterRow($child)
+      }
+    }
 
-      elements.push(
-        $pondWater
-      )
-
-      const x = GetPercentStyle($pondWater, pX)
-      transforms.push({
-        x,
-        y: GetPercentStyle($pondWater, pY),
-        r: false
-      })
-
-      const duration = 8 * 1000
-      animations.push({
-        duration,
-        x0: x,
-        dx: 0.5,
-        elapsed: Math.random() * duration,
-      })
+    const $pondLilies = $pond.getElementsByClassName("Lily")
+    for (const $pondLily of $pondLilies) {
+      CreateLily($pondLily)
     }
 
     requestAnimationFrame(Loop)
+  }
+
+  /**
+   * @param {HTMLElement} $el
+   **/
+  function CreateWaterRow($el) {
+    numEntities += 1
+
+    const l = GetPercentStyle($el, P.L)
+    const r = GetPercentStyle($el, P.R)
+    transforms.push({
+      x: l,
+      w: 100 - r - l,
+    })
+
+    const duration = 8 * 1000
+    animations.push([{
+      duration,
+      dx: 2,
+      dy: 0,
+      xi: l,
+      yi: 0,
+      elapsed: Math.random() * duration,
+    }])
+
+    sprites.push({
+      $el,
+      type: "row"
+    })
+  }
+
+  /**
+   * @param {HTMLElement} $el
+   **/
+  function CreateLily($el) {
+    numEntities += 1
+
+    const x = GetPercentStyle($el, P.X)
+    const y = GetPercentStyle($el, P.Y)
+    transforms.push({
+      x,
+      y,
+    })
+
+    const duration = 5 * 1000
+    animations.push([{
+      duration,
+      dx: 1,
+      dy: 0,
+      xi: x,
+      yi: y,
+      elapsed: Math.random() * duration,
+    }, {
+      duration,
+      dx: 0,
+      dy: 1,
+      xi: x,
+      yi: y,
+      elapsed: Math.random() * duration,
+    }])
+
+    sprites.push({
+      $el,
+      type: "point"
+    })
   }
 
   /**
@@ -170,31 +227,61 @@ description: welcome to the pondlife website
     const delta = time - lastTime
     lastTime = time
 
+    // run systems
+    Animate(delta)
+    Render(delta)
+
+    // apply transforms
+    requestAnimationFrame(Loop)
+  }
+
+  /**
+   * @param {delta} number
+   **/
+  function Animate(delta) {
     // run animations
     for (let id = 0; id < numEntities; id++) {
       // advance animation
-      const a = animations[id]
-      a.elapsed = (a.elapsed + delta) % a.duration
+      const as = animations[id]
+      if (as == null) {
+        continue
+      }
 
-      // make animation symmetric: [0..1] -> [0..1..0]
-      let k = a.elapsed / a.duration
-      k = (Math.sin(((2 * k) - 0.5) * Math.PI) / 2) + 0.5
+      for (const a of as) {
+        a.elapsed = (a.elapsed + delta) % a.duration
 
-      // update position
-      const t = transforms[id]
-      t.x = a.x0 + a.dx * k
+        // make animation symmetric: [0..1] -> [0..1..0]
+        let k = a.elapsed / a.duration
+        k = (Math.sin(((2 * k) - 0.5) * Math.PI) / 2) + 0.5
+
+        // update position
+        const t = transforms[id]
+        t.x = a.xi + a.dx * k
+      }
     }
+  }
 
-    // apply transforms
+  /**
+  * @param {delta} number
+  **/
+  function Render(delta) {
     for (let id = 0; id < numEntities; id++) {
-      const $el = elements[id]
-
+      const s = sprites[id]
       const t = transforms[id]
-      SetPercentStyle($el, pX, t.x)
-      SetPercentStyle($el, pY, t.y)
-    }
 
-    requestAnimationFrame(Loop)
+      switch (s.type) {
+      case "block":
+      case "point":
+        SetPercentStyle(s.$el, P.X, t.x)
+        SetPercentStyle(s.$el, P.Y, t.y)
+        break
+
+      case "row":
+        SetPercentStyle(s.$el, P.L, t.x)
+        SetPercentStyle(s.$el, P.R, 100 - t.w - t.x)
+        break
+      }
+    }
   }
 
   // -- queries --
