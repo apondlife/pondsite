@@ -1,4 +1,6 @@
 .Life {
+  transform: rotate(var(--a));
+
   > a {
     color: inherit;
     text-decoration: none;
@@ -7,20 +9,21 @@
 }
 
 .Protozoa {
+  --a: 8deg;
   color: #f28afb;
-  transform: rotate(8deg);
 }
 
 .Stentor {
+  --a: 0deg;
   color: #3a72ff;
 }
 
 .Ameoba {
+  --a: 102deg;
   color: #f7e377;
-  transform: rotate(102deg);
 }
 
 .Daphnia {
+  --a: -21deg;
   color: #ffcb9c;
-  transform: rotate(-21deg);
 }

@@ -8,9 +8,9 @@ description: welcome to the pondlife website
 <article id="pond" class="Pond">
   <div class="Pond-body">
     <section aria-hidden="true">
-      <ul class="Bank" style="--x: 37.5%; --y: -0.3%; --w: 21.9%; --a: -9deg;">
-        <li style="--r: 62%;">░░░░░░░░▒░░</li>
-        <li style="--l: 25%; --t: 6%; --a: 3deg;">░░░░░▒▒░░░░░░░░░▓░░░░░</li>
+      <ul class="Bank" style="--x: 37.4%; --y: 1.2%; --w: 21.9%;">
+        <li style="--r: 62%; --a: -9deg;">░░░░░░░░▒░░</li>
+        <li style="--l: 26.4%; --t: -0.7%; --a: -6deg;">░░░░░▒▒░░░░░░░░░▓░░░░░</li>
       </ul>
 
       <ul class="Bank" style="--x: 57.8%; --y: 19%; --a: -15deg;">
@@ -42,9 +42,9 @@ description: welcome to the pondlife website
         <li style="--a: -2deg;">░░░░░░░░▒░░</li>
       </ul>
 
-      <ul class="Bank" style="--x: 17.2%; --y: 86.2%; --w: 9%; --a: 3deg;">
-        <li style="--l: 30%;">░░░░░</li>
-        <li style="--r: 15%; --t: 7%;">░▓░▒▒░░</li>
+      <ul class="Bank" style="--x: 17.2%; --y: 86.2%; --w: 9%;">
+        <li style="--l: 30%; --a: 3deg;">░░░░░</li>
+        <li style="--r: 15%; --t: 7%; --a: 3deg;">░▓░▒▒░░</li>
       </ul>
 
       <ul class="Bank" style="--x: 4.7%; --y: 48.8%; --w: 11%;">
@@ -111,7 +111,173 @@ description: welcome to the pondlife website
 </article>
 
 <script type="module">
+  // -- types --
+  class Vec2 {
+    // -- statics --
+    static Temp1 = new Vec2()
+    static Temp2 = new Vec2()
+    static Temp3 = new Vec2()
+
+    // -- lifetime --
+    constructor(x = 0, y = 0) {
+      this.x = x
+      this.y = y
+    }
+
+    // -- operators --
+    Zero() {
+      this.x = 0
+      this.y = 0
+      return this
+    }
+
+    Temp(temp = Vec2.Temp1) {
+      return temp.Set(this)
+    }
+
+    /**
+     * @param {Vec2} other
+     **/
+    Set(other) {
+      this.x = other.x
+      this.y = other.y
+      return this
+    }
+
+    /**
+     * @param {Vec2} other
+     **/
+    Add(other) {
+      this.x += other.x
+      this.y += other.y
+      return this
+    }
+
+    /**
+     * @param {Vec2} other
+     **/
+    Sub(other) {
+      this.x -= other.x
+      this.y -= other.y
+      return this
+    }
+
+    /**
+     * @param {number} scale
+     **/
+    Mul(scale) {
+      this.x *= scale
+      this.y *= scale
+      return this
+    }
+
+    Normalize() {
+      return this.Mul(1 / this.Mag())
+    }
+
+    /**
+     * @param {number} len
+     * @param {number} angle
+     **/
+    Circular(len, angle) {
+      this.x = len * Math.cos(angle),
+      this.y = len * Math.sin(angle)
+      return this
+    }
+
+    // -- queries --
+    Mag() {
+      const {x, y} = this
+      return Math.sqrt(x * x + y * y)
+    }
+
+    /**
+     * @param {Vec2} other
+     **/
+    Dot(other) {
+      return this.x * other.x + this.y * other.y
+    }
+
+    toString() {
+      return `[${fmt(this.x)}, ${fmt(this.y)}]`
+    }
+  }
+
+  class Sprite {
+    constructor(
+      /** @type {"block" | "row" | "point"} */
+      type
+    ) {
+      this.type = type
+    }
+  }
+
+  class Collider {
+    constructor(
+      /** @type {"life" | "wall"} */
+      tag,
+      angle = 0,
+      quad = [new Vec2(), new Vec2(), new Vec2(), new Vec2()]
+    ) {
+      this.tag = tag
+      this.angle = angle
+      this.quad = quad
+      this.dirty = true
+    }
+  }
+
+  class Transform {
+    constructor(
+      pos = new Vec2(),
+      width = 0
+    ) {
+      this.pos = pos
+      this.width = width
+    }
+  }
+
+  class Rigidbody {
+    constructor(
+      velocity = new Vec2(),
+      acceleration = new Vec2()
+    ) {
+      this.velocity = velocity
+      this.acceleration = acceleration
+    }
+  }
+
+  class Agent {
+    constructor(
+      duration = 0,
+      acceleration = new Vec2()
+    ) {
+      this.duration = duration
+      this.acceleration = acceleration
+    }
+  }
+
+  class Anim {
+    constructor(
+      prop = "",
+      delta = 0,
+      initial = 0,
+      duration = 0,
+      elapsed = -1
+    ) {
+      this.prop = prop
+      this.delta = delta
+      this.initial = initial
+      this.duration = duration
+      this.elapsed = elapsed >= 0 ? elapsed : Math.random() * duration
+    }
+  }
+
   // -- constants --
+  const K = {
+    FixedDelta: 1000 / 60,
+    Deg2Rad: Math.PI / 180,
+  }
+
   const Props = {
     X: "x",
     Y: "y",
@@ -123,31 +289,64 @@ description: welcome to the pondlife website
     W: "--w",
     L: "--l",
     R: "--r",
+    A: "--a",
   }
 
   // -- props --
-  let lastTime = 0
+  // the timestamp last frame
+  let timePrev = 0
+
+  // the accumulated delta
+  let timeRemaining = 0
 
   // the number of entities
   let numEntities = 0
 
-  /** @type {Array<{ x: number, y: number, w: number }>} */
+  // the number of frames to simulate; if < 0 not paused, if >= 0 simulate that many frames while paused.
+  let numFrames = -1
+
+  /** @type {Array<HTMLElement>} */
+  const elements = []
+
+  /** @type {Array<Sprite>} */
+  const sprites = []
+
+  /** @type {Array<Collider>} */
+  const colliders = []
+
+  /** @type {Array<Transform>} */
   const transforms = []
 
-  /** @type {Array<Array<{ prop: string, delta: number, initial: number, duration: number, elapsed: number }>>} */
-  const animations = []
+  /** @type {Array<Rigidbody>} */
+  const rigidbodies = []
 
-  /** @type {Array<{ $el: HTMLElement, type: "block" | "row" | "point" }>} */
-  const sprites = []
+  /** @type {Array<Agent>} */
+  const agents = []
+
+  /** @type {Array<Array<Anim>>} */
+  const animations = []
 
   // -- lifetime --
   function Init() {
     const $pond = document.getElementById("pond")
 
+    // create entities
+    const $pondLifes = $pond.getElementsByClassName("Life")
+    for (const $pondLife of $pondLifes) {
+      CreateLife($pondLife)
+    }
+
+    const $pondBanks = $pond.getElementsByClassName("Bank")
+    for (const $pondBank of $pondBanks) {
+      for (const $child of $pondBank.children) {
+        CreateWall($child)
+      }
+    }
+
     const $pondWaters = $pond.getElementsByClassName("Water")
     for (const $pondWater of $pondWaters) {
       for (const $child of $pondWater.children) {
-        CreateWaterRow($child)
+        CreateWater($child)
       }
     }
 
@@ -156,35 +355,105 @@ description: welcome to the pondlife website
       CreateLily($pondLily)
     }
 
-    requestAnimationFrame(Loop)
+    // bind events
+    if (debug != null) {
+      document.addEventListener("keydown", debug.OnKeyDown)
+    }
+
+    // start update loop
+    requestAnimationFrame(Update)
   }
 
   /**
    * @param {HTMLElement} $el
    **/
-  function CreateWaterRow($el) {
+  function CreateLife($el) {
     numEntities += 1
 
-    const l = GetPercentStyle($el, Css.L)
-    const r = GetPercentStyle($el, Css.R)
-    transforms.push({
-      x: l,
-      w: 100 - r - l,
-    })
+    elements.push($el)
 
-    const duration = 8 * 1000
-    animations.push([{
-      prop: Props.X,
-      duration,
-      delta: 2,
-      initial: l,
-      elapsed: Math.random() * duration,
-    }])
+    sprites.push(new Sprite(
+      "point"
+    ))
 
-    sprites.push({
-      $el,
-      type: "row"
-    })
+    colliders.push(new Collider(
+      "life",
+      GetStyle_Float(getComputedStyle($el), Css.A) * K.Deg2Rad
+    ))
+
+    transforms.push(new Transform(
+      new Vec2(
+        GetStyle_Float($el.style, Css.X),
+        GetStyle_Float($el.style, Css.Y)
+      )
+    ))
+
+    const mag = Lerp(1, 3, Math.random())
+    const rot = Math.random() * 2 * Math.PI
+    // const vel = new Vec2(-10, 50)
+    // const vel = new Vec2(0, 70)
+    const vel = new Vec2().Circular(mag, rot)
+
+    rigidbodies.push(new Rigidbody(vel))
+
+    agents.push(new Agent())
+
+    animations.push(null)
+  }
+
+  /**
+  * @param {HTMLElement} $el
+  **/
+  function CreateWall($el) {
+    numEntities += 1
+
+    elements.push($el)
+
+    sprites.push(null)
+
+    colliders.push(new Collider(
+      "wall",
+      GetStyle_Float($el.style, Css.A) * K.Deg2Rad
+    ))
+
+    transforms.push(null)
+
+    rigidbodies.push(null)
+
+    agents.push(null)
+
+    animations.push(null)
+  }
+
+  /**
+   * @param {HTMLElement} $el
+   **/
+  function CreateWater($el) {
+    numEntities += 1
+
+    elements.push($el)
+
+    sprites.push(new Sprite(
+      "row"
+    ))
+
+    colliders.push(null)
+
+    const l = GetStyle_Float($el.style, Css.L)
+    const r = GetStyle_Float($el.style, Css.R)
+
+    transforms.push(new Transform(
+      new Vec2(l, null),
+      100 - r - l,
+    ))
+
+    rigidbodies.push(null)
+
+    agents.push(null)
+
+    animations.push([
+      new Anim(Props.X, 2, l, 8 * 1000)
+    ])
   }
 
   /**
@@ -193,52 +462,336 @@ description: welcome to the pondlife website
   function CreateLily($el) {
     numEntities += 1
 
-    const x = GetPercentStyle($el, Css.X)
-    const y = GetPercentStyle($el, Css.Y)
-    transforms.push({
-      x,
-      y,
-    })
+    elements.push($el)
 
-    const duration = 10 * 1000
-    animations.push([{
-      prop: Props.X,
-      delta: 1,
-      initial: x,
-      duration,
-      elapsed: Math.random() * duration,
-    }, {
-      prop: Props.Y,
-      delta: 1,
-      initial: y,
-      duration,
-      elapsed: Math.random() * duration,
-    }])
+    sprites.push(new Sprite(
+      "point"
+    ))
 
-    sprites.push({
-      $el,
-      type: "point"
-    })
+    colliders.push(null)
+
+    const x = GetStyle_Float($el.style, Css.X)
+    const y = GetStyle_Float($el.style, Css.Y)
+
+    transforms.push(new Transform(
+      new Vec2(x, y)
+    ))
+
+    rigidbodies.push(null)
+
+    agents.push(null)
+
+    animations.push([
+      new Anim(Props.X, 1, x, 10 * 1000),
+      new Anim(Props.Y, 1, y, 10 * 1000)
+    ])
   }
 
+  // -- systems --
   /**
    * @param {DOMHighResTimestamp} time
    **/
-  function Loop(time) {
-    // update delta
-    const delta = time - lastTime
-    lastTime = time
+  function Update(time) {
+    // update time
+    timeRemaining += time - timePrev
+    timePrev = time
 
-    // run systems
-    Animate(delta)
+    // run fixed timestep systems
+    const delta = K.FixedDelta
+    while (timeRemaining > delta && numFrames != 0) {
+      FixedUpdate(delta)
+      timeRemaining -= delta
+      numFrames -= 1
+    }
+
+    // run render systems
     Render(delta)
 
-    // apply transforms
-    requestAnimationFrame(Loop)
+    // schedule next frame
+    requestAnimationFrame(Update)
+  }
+
+  function FixedUpdate(delta) {
+    Act(delta)
+    SyncQuads(delta)
+    Simulate(delta)
+    Animate(delta)
   }
 
   /**
    * @param {delta} number
+   **/
+  function Act(delta) {
+    // for every agents
+    for (let id = 0; id < numEntities; id++) {
+      const a = agents[id]
+      const r = rigidbodies[id]
+      if (a == null || r == null) {
+        continue
+      }
+
+      // if there is an an active acceleration, apply it
+      if (a.duration > 0) {
+        a.duration = Math.max(a.duration - delta, 0)
+        r.acceleration.Add(a.acceleration)
+      }
+      // otherwise, randomly select a new one
+      else if (Math.random(0.2)) {
+        a.duration = Lerp(100, 300, Math.random())
+
+        const mag = Lerp(100, 200, Math.random())
+        const rot = Math.random() * 2 * Math.PI
+        a.acceleration.Circular(mag, rot)
+      }
+    }
+  }
+
+  /**
+   * @param {delta} number
+   **/
+  function SyncQuads(delta) {
+    // for all dirty colliders
+    for (let id = 0; id < numEntities; id++) {
+      const c = colliders[id]
+      if (c == null || !c.dirty) {
+        continue
+      }
+
+      const $el = elements[id]
+      if ($el == null) {
+        continue
+      }
+
+      // find the unrotated width / height
+      const w = $el.offsetWidth
+      const w2 = w / 2
+
+      const h = $el.offsetHeight
+      const h2 = h / 2
+
+      // find the object center
+      let cx = w2
+      let cy = h2
+
+      /** @type {HTMLElement} */
+      let $tree = $el
+      while ($tree != null) {
+        cx += $tree.offsetLeft
+        cy += $tree.offsetTop
+
+        $tree = $tree.offsetParent
+      }
+
+      // rotate the rect to cache the quad
+      const aCos = Math.cos(c.angle)
+      const aSin = Math.sin(c.angle)
+
+      const xCos = w2 * aCos
+      const xSin = w2 * aSin
+      const yCos = h2 * aCos
+      const ySin = h2 * aSin
+
+      c.quad[0].x = cx + -xCos - -ySin
+      c.quad[0].y = cy + -xSin + -yCos
+
+      c.quad[1].x = cx + +xCos - -ySin
+      c.quad[1].y = cy + +xSin + -yCos
+
+      c.quad[2].x = cx + +xCos - +ySin
+      c.quad[2].y = cy + +xSin + +yCos
+
+      c.quad[3].x = cx + -xCos - +ySin
+      c.quad[3].y = cy + -xSin + +yCos
+
+      // flag the quad as synced (unless life)
+      c.dirty = c.tag === "life"
+    }
+  }
+
+  /**
+   * @param {delta} number
+   **/
+  function Simulate(delta) {
+    // for all colliders
+    for (let id = 0; id < numEntities; id++) {
+      const c = colliders[id]
+      if (c == null) {
+        continue
+      }
+
+      // if it's not a life, don't simulate
+      if (c.tag != "life") {
+        continue
+      }
+
+      const t = transforms[id]
+      const r = rigidbodies[id]
+      if (t == null || r == null) {
+        continue
+      }
+
+      // simulate physics
+      const v = r.velocity
+      const a = r.acceleration
+      const k = delta / 1000
+
+      // resolve forces
+      v.Add(a.Temp().Mul(k))
+      a.Zero()
+
+      // update positions
+      t.pos.Add(v.Temp().Mul(k))
+
+      // bounce off walls
+      for (let iid = 0; iid < numEntities; iid++) {
+        const wall = colliders[iid]
+        if (wall == null || wall.tag != "wall") {
+          continue
+        }
+
+        // check collisions using separating axis theroem; we'll call
+        // - a: this quad
+        // - b: the quad we're testing against
+        const a = c.quad
+        const b = wall.quad
+
+        // the collision is a hit unless we find a separating axis
+        let didHit = true
+        let hitPoint = Vec2.Temp1
+        let hitNormal = Vec2.Temp2
+        let hitOffset = 0
+        let hitOffsetMag = Number.MAX_VALUE
+
+        // for each side of the this quad
+        for (let i0 = 0; i0 < 4 && didHit; i0++) {
+          const i1 = (i0 + 1) % 4
+
+          // find the endpoints
+          const p0 = a[i0]
+          const p1 = a[i1]
+
+          // find the normal
+          const n = Vec2.Temp3
+          n.x = p0.y - p1.y
+          n.y = p1.x - p0.x
+          n.Normalize()
+
+          // find the minimum & maximum projection of each quad along the normal
+          let aMin = Number.MAX_VALUE
+          let aMax = -aMin
+          let bMin = aMin
+          let bMax = -aMin
+
+          let projA = []
+          let projB = []
+
+          // ...by projecting each point on both quads onto the normal
+          for (let j0 = 0; j0 < 4; j0++) {
+            const aDotN = n.Dot(a[j0])
+            const bDotN = n.Dot(b[j0])
+
+            projA.push(aDotN)
+            projB.push(bDotN)
+
+            if (aDotN < aMin) {
+              aMin = aDotN
+            }
+
+            if (aDotN > aMax) {
+              aMax = aDotN
+            }
+
+            if (bDotN < bMin) {
+              bMin = bDotN
+            }
+
+            if (bDotN > bMax) {
+              bMax = bDotN
+            }
+          }
+
+          let mins = [aMin, aMax, bMin, bMax]
+
+          // translate projections w/ the edge of this side (aMax) @ the origin (0)
+          aMin -= aMax
+          bMin -= aMax
+          bMax -= aMax
+
+          // (translate aMax last)
+          aMax -= aMax
+
+          // calculate offsets to project out of an overlap
+          let lOffset = bMax - aMin
+          if (lOffset < 0) {
+            lOffset = Number.MAX_VALUE
+          }
+
+          let rOffset = aMax - bMin
+          if (rOffset > 0) {
+            rOffset = Number.MAX_VALUE
+          }
+
+          const lOffsetMag = Math.abs(lOffset)
+          const rOffsetMag = Math.abs(rOffset)
+
+          // choose the offset that would be the smallest overlap
+          let minOffset = lOffset
+          let minOffsetMag = lOffsetMag
+
+          if (rOffsetMag < lOffsetMag) {
+            minOffset = rOffset
+            minOffsetMag = rOffsetMag
+          }
+
+          // the max overlap is the sum of the lengths of a and b. if the min offset is less than this, it's an
+          // overlap. otherwise, this is a separating axis & it's a miss
+          const aLen = aMax - aMin
+          const bLen = bMax - bMin
+          didHit = minOffsetMag < aLen + bLen
+
+          // if it hit, find the smallest overlap to project out of the collision
+          if (didHit && minOffsetMag < hitOffsetMag) {
+            hitPoint.Set(p1).Sub(p0).Mul(0.5).Add(p0)
+            hitNormal.Set(n)
+            hitOffset = minOffset
+            hitOffsetMag = minOffsetMag
+          }
+
+          if (elements[id].className === "Life Daphnia" && elements[iid].id === "test") {
+            console.log(`
+              side - ${i0} n: ${n} n•up: ${fmt(n.Dot(new Vec2(0, -1)))}
+              projA - ${projA.map(fmt)}
+              projB - ${projB.map(fmt)}
+              bound - ${mins.map(fmt)}
+              a - min ${fmt(aMin)} max ${fmt(aMax)}
+              b - min ${fmt(bMin)} max ${fmt(bMax)}
+              offsets - l: ${fmt(lOffset)} r: ${fmt(rOffset)}
+              hit - ?: ${didHit} p: ${hitPoint} n: ${hitNormal} o: ${hitOffset}
+            `)
+          }
+        }
+
+        if (didHit) {
+          const $aEl = elements[id]
+          const $bEl = elements[iid]
+
+          debug.Draw(hitPoint, hitNormal.Mul(hitOffset))
+
+          $aEl.classList.toggle("is-hit", true)
+          $bEl.classList.toggle("is-hit", true)
+
+          numFrames = 1
+        }
+      }
+    }
+  }
+
+  function fmt(num) {
+    return num.toFixed(4)
+  }
+
+  /**
+   * @param {number} delta
    **/
   function Animate(delta) {
     // run animations
@@ -258,41 +811,64 @@ description: welcome to the pondlife website
 
         // update position
         const t = transforms[id]
-        t[a.prop] = a.initial + a.delta * k
+        t.pos[a.prop] = a.initial + a.delta * k
       }
     }
   }
 
   /**
-  * @param {delta} number
+  * @param {number} delta
   **/
   function Render(delta) {
     for (let id = 0; id < numEntities; id++) {
+      const $el = elements[id]
       const s = sprites[id]
       const t = transforms[id]
+      if (s == null || t == null) {
+        continue
+      }
 
       switch (s.type) {
       case "block":
       case "point":
-        SetPercentStyle(s.$el, Css.X, t.x)
-        SetPercentStyle(s.$el, Css.Y, t.y)
+        SetStyle_Percent($el, Css.X, t.pos.x)
+        SetStyle_Percent($el, Css.Y, t.pos.y)
         break
 
       case "row":
-        SetPercentStyle(s.$el, Css.L, t.x)
-        SetPercentStyle(s.$el, Css.R, 100 - t.w - t.x)
+        SetStyle_Percent($el, Css.L, t.pos.x)
+        SetStyle_Percent($el, Css.R, 100 - t.width - t.pos.x)
         break
       }
+    }
+
+    if (debug != null) {
+      debug.Render(delta)
     }
   }
 
   // -- queries --
   /**
-   * @param {HTMLElement} $el
+   * @param {number} min
+   * @param {number} max
+   * @param {number} t
+   **/
+  function Lerp(min, max, t) {
+    return min + (max - min) * t
+  }
+
+  // -- rendering --
+  /**
+   * @param {CSSStyleDeclaration} styles
    * @param {string} name
    **/
-  function GetPercentStyle($el, name) {
-    return Number.parseFloat($el.style.getPropertyValue(name))
+  function GetStyle_Float(styles, name) {
+    const value = styles.getPropertyValue(name)
+    if (value == null || value === "") {
+      return 0
+    }
+
+    return Number.parseFloat(value)
   }
 
   /**
@@ -300,9 +876,108 @@ description: welcome to the pondlife website
    * @param {string} name
    * @param {number} value
    **/
-  function SetPercentStyle($el, name, value) {
+  function SetStyle_Percent($el, name, value) {
     $el.style.setProperty(name, `${value}%`)
   }
+
+  // -- debug --
+  class Ray {
+    constructor() {
+      this.src = new Vec2()
+      this.dir = new Vec2()
+    }
+  }
+
+  class Debug {
+    constructor() {
+      this.$el = document.createElement("canvas")
+      /** @type {Array<Ray>} */
+      this.rays = []
+    }
+
+    static Insert() {
+      const debug = new Debug()
+      debug.$el.id = "debug"
+      debug.$el.classList.toggle("Debug", true)
+
+      document.body.appendChild(debug.$el)
+
+      return debug
+    }
+
+    Render() {
+      const $body = document.body
+
+      const w = $body.clientWidth
+      const h = $body.clientHeight
+
+      this.$el.width = w
+      this.$el.height = h
+
+      const ctx = this.$el.getContext("2d")
+      ctx.clearRect(0, 0, w, h)
+
+      ctx.strokeStyle = "magenta"
+      for (const c of colliders) {
+        if (c == null) {
+          continue
+        }
+
+        ctx.beginPath()
+
+        const p0 = c.quad[0]
+        ctx.moveTo(p0.x, p0.y)
+
+        for (let i = 1; i < 4; i++) {
+          const pi = c.quad[i]
+          ctx.lineTo(pi.x, pi.y)
+        }
+
+        ctx.closePath()
+        ctx.stroke()
+      }
+
+      ctx.fillStyle = "black"
+      ctx.strokeStyle = "lime"
+      for (const ray of this.rays) {
+        const p0 = ray.src
+        const p1 = ray.dir.Temp().Add(ray.src)
+
+        ctx.beginPath()
+        ctx.ellipse(p0.x, p0.y, 2, 2, 0, 0, 2 * Math.PI)
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.moveTo(p0.x, p0.y)
+        ctx.lineTo(p1.x, p1.y)
+        ctx.closePath()
+        ctx.stroke()
+      }
+    }
+
+    /**
+     * @param {Vec2} src
+     * @param {Vec2} dir
+     */
+    Draw(src, dir) {
+      const ray = new Ray()
+      ray.src.Set(src)
+      ray.dir.Set(dir)
+      debug.rays.push(ray)
+    }
+
+    /**
+     * @param {KeyboardEvent} evt
+     **/
+    OnKeyDown(evt) {
+      if (evt.key === " ") {
+        numFrames = numFrames != 0 ? -1 : 1
+      }
+    }
+  }
+
+  // the debug utilties, if any
+  let debug = Debug.Insert()
 
   // -- bootstrap --
   Init()
