@@ -6,7 +6,7 @@ description: welcome to the pondlife website
 ---
 
 <article id="pond" class="Pond">
-  <div class="Pond-body">
+  <div id="pond-body" class="Pond-body">
     <section aria-hidden="true">
       <ul class="Bank" style="--x: 37.4%; --y: 1.2%; --w: 21.9%;">
         <li style="--r: 62%; --a: -9deg;">░░░░░░░░▒░░</li>
@@ -114,9 +114,12 @@ description: welcome to the pondlife website
   // -- types --
   class Vec2 {
     // -- statics --
-    static Temp1 = new Vec2()
-    static Temp2 = new Vec2()
-    static Temp3 = new Vec2()
+    static Temp = [
+      new Vec2(),
+      new Vec2(),
+      new Vec2(),
+      new Vec2(),
+    ]
 
     // -- lifetime --
     constructor(x = 0, y = 0) {
@@ -131,8 +134,8 @@ description: welcome to the pondlife website
       return this
     }
 
-    Temp(temp = Vec2.Temp1) {
-      return temp.Set(this)
+    Temp(tempIndex) {
+      return Vec2.Temp[tempIndex].Set(this)
     }
 
     /**
@@ -163,16 +166,25 @@ description: welcome to the pondlife website
     }
 
     /**
+     * @param {Vec2} other
+     **/
+    Div(other) {
+      this.x /= other.x
+      this.y /= other.y
+      return this
+    }
+
+    /**
      * @param {number} scale
      **/
-    Mul(scale) {
+    Scl(scale) {
       this.x *= scale
       this.y *= scale
       return this
     }
 
     Normalize() {
-      return this.Mul(1 / this.Mag())
+      return this.Scl(1 / this.Mag())
     }
 
     /**
@@ -199,7 +211,7 @@ description: welcome to the pondlife website
     }
 
     toString() {
-      return `[${fmt(this.x)}, ${fmt(this.y)}]`
+      return `[${Fmt(this.x)}, ${Fmt(this.y)}]`
     }
   }
 
@@ -212,12 +224,23 @@ description: welcome to the pondlife website
     }
   }
 
+  function Quad() {
+    return [
+      new Vec2(),
+      new Vec2(),
+      new Vec2(),
+      new Vec2(),
+    ]
+  }
+
   class Collider {
+    static Temp = Quad()
+
     constructor(
       /** @type {"life" | "wall"} */
       tag,
       angle = 0,
-      quad = [new Vec2(), new Vec2(), new Vec2(), new Vec2()]
+      quad = Quad()
     ) {
       this.tag = tag
       this.angle = angle
@@ -305,6 +328,18 @@ description: welcome to the pondlife website
   // the number of frames to simulate; if < 0 not paused, if >= 0 simulate that many frames while paused.
   let numFrames = -1
 
+  /** @type {HTMLElement} */
+  let $pond = null
+
+  /** @type {HTMLElement} */
+  let $pondBody = null
+
+  // the size of the pond in pixels
+  const pondSize = new Vec2()
+
+  // the size of the pond body in pixels
+  const bodySize = new Vec2()
+
   /** @type {Array<HTMLElement>} */
   const elements = []
 
@@ -328,7 +363,9 @@ description: welcome to the pondlife website
 
   // -- lifetime --
   function Init() {
-    const $pond = document.getElementById("pond")
+    // set elements
+    $pond = document.getElementById("pond")
+    $pondBody = document.getElementById("pond-body")
 
     // create entities
     const $pondLifes = $pond.getElementsByClassName("Life")
@@ -390,8 +427,6 @@ description: welcome to the pondlife website
 
     const mag = Lerp(1, 3, Math.random())
     const rot = Math.random() * 2 * Math.PI
-    // const vel = new Vec2(-10, 50)
-    // const vel = new Vec2(0, 70)
     const vel = new Vec2().Circular(mag, rot)
 
     rigidbodies.push(new Rigidbody(vel))
@@ -493,33 +528,54 @@ description: welcome to the pondlife website
    **/
   function Update(time) {
     // update time
-    timeRemaining += time - timePrev
+    const delta = time - timePrev
+    timeRemaining += delta
     timePrev = time
 
+    // run variable timestep systems
+    SyncViewport(delta)
+
     // run fixed timestep systems
-    const delta = K.FixedDelta
-    while (timeRemaining > delta && numFrames != 0) {
-      FixedUpdate(delta)
-      timeRemaining -= delta
+    const fixedDelta = K.FixedDelta
+    while (timeRemaining > fixedDelta && numFrames != 0) {
+      FixedUpdate(fixedDelta)
+      timeRemaining -= fixedDelta
       numFrames -= 1
     }
 
     // run render systems
-    Render(delta)
+    Render(fixedDelta)
 
     // schedule next frame
     requestAnimationFrame(Update)
   }
 
+  /**
+   * @param {number} delta
+   **/
   function FixedUpdate(delta) {
     Act(delta)
     SyncQuads(delta)
     Simulate(delta)
+    Collide(delta)
     Animate(delta)
   }
 
   /**
-   * @param {delta} number
+   * @param {number} delta
+   **/
+  function SyncViewport(delta) {
+    const pondRect = $pond.getBoundingClientRect()
+    pondSize.x = pondRect.width
+    pondSize.y = pondRect.height
+
+    const bodyRect = $pondBody.getBoundingClientRect()
+    bodySize.x = bodyRect.width
+    bodySize.y = bodyRect.height
+  }
+
+  /**
+   * @param {number} delta
    **/
   function Act(delta) {
     // for every agents
@@ -547,7 +603,7 @@ description: welcome to the pondlife website
   }
 
   /**
-   * @param {delta} number
+   * @param {number} delta
    **/
   function SyncQuads(delta) {
     // for all dirty colliders
@@ -609,7 +665,7 @@ description: welcome to the pondlife website
   }
 
   /**
-   * @param {delta} number
+   * @param {number} delta
    **/
   function Simulate(delta) {
     // for all colliders
@@ -636,158 +692,186 @@ description: welcome to the pondlife website
       const k = delta / 1000
 
       // resolve forces
-      v.Add(a.Temp().Mul(k))
+      v.Add(a.Temp(0).Scl(k))
       a.Zero()
 
       // update positions
-      t.pos.Add(v.Temp().Mul(k))
+      t.pos.Add(v.Temp(0).Scl(k))
+    }
+  }
 
-      // bounce off walls
+  /**
+   * @param {number} delta
+   **/
+  function Collide(delta) {
+    // for all colliders
+    for (let id = 0; id < numEntities; id++) {
+      const c = colliders[id]
+      if (c == null) {
+        continue
+      }
+
+      // if it's not a life, don't collide
+      if (c.tag != "life") {
+        continue
+      }
+
+      const t = transforms[id]
+      if (t == null) {
+        continue
+      }
+
       for (let iid = 0; iid < numEntities; iid++) {
         const wall = colliders[iid]
         if (wall == null || wall.tag != "wall") {
           continue
         }
 
-        // check collisions using separating axis theroem; we'll call
-        // - a: this quad
-        // - b: the quad we're testing against
-        const a = c.quad
-        const b = wall.quad
-
-        // the collision is a hit unless we find a separating axis
-        let didHit = true
-        let hitPoint = Vec2.Temp1
-        let hitNormal = Vec2.Temp2
-        let hitOffset = 0
-        let hitOffsetMag = Number.MAX_VALUE
-
-        // for each side of the this quad
-        for (let i0 = 0; i0 < 4 && didHit; i0++) {
-          const i1 = (i0 + 1) % 4
-
-          // find the endpoints
-          const p0 = a[i0]
-          const p1 = a[i1]
-
-          // find the normal
-          const n = Vec2.Temp3
-          n.x = p0.y - p1.y
-          n.y = p1.x - p0.x
-          n.Normalize()
-
-          // find the minimum & maximum projection of each quad along the normal
-          let aMin = Number.MAX_VALUE
-          let aMax = -aMin
-          let bMin = aMin
-          let bMax = -aMin
-
-          let projA = []
-          let projB = []
-
-          // ...by projecting each point on both quads onto the normal
-          for (let j0 = 0; j0 < 4; j0++) {
-            const aDotN = n.Dot(a[j0])
-            const bDotN = n.Dot(b[j0])
-
-            projA.push(aDotN)
-            projB.push(bDotN)
-
-            if (aDotN < aMin) {
-              aMin = aDotN
-            }
-
-            if (aDotN > aMax) {
-              aMax = aDotN
-            }
-
-            if (bDotN < bMin) {
-              bMin = bDotN
-            }
-
-            if (bDotN > bMax) {
-              bMax = bDotN
-            }
-          }
-
-          let mins = [aMin, aMax, bMin, bMax]
-
-          // translate projections w/ the edge of this side (aMax) @ the origin (0)
-          aMin -= aMax
-          bMin -= aMax
-          bMax -= aMax
-
-          // (translate aMax last)
-          aMax -= aMax
-
-          // calculate offsets to project out of an overlap
-          let lOffset = bMax - aMin
-          if (lOffset < 0) {
-            lOffset = Number.MAX_VALUE
-          }
-
-          let rOffset = aMax - bMin
-          if (rOffset > 0) {
-            rOffset = Number.MAX_VALUE
-          }
-
-          const lOffsetMag = Math.abs(lOffset)
-          const rOffsetMag = Math.abs(rOffset)
-
-          // choose the offset that would be the smallest overlap
-          let minOffset = lOffset
-          let minOffsetMag = lOffsetMag
-
-          if (rOffsetMag < lOffsetMag) {
-            minOffset = rOffset
-            minOffsetMag = rOffsetMag
-          }
-
-          // the max overlap is the sum of the lengths of a and b. if the min offset is less than this, it's an
-          // overlap. otherwise, this is a separating axis & it's a miss
-          const aLen = aMax - aMin
-          const bLen = bMax - bMin
-          didHit = minOffsetMag < aLen + bLen
-
-          // if it hit, find the smallest overlap to project out of the collision
-          if (didHit && minOffsetMag < hitOffsetMag) {
-            hitPoint.Set(p1).Sub(p0).Mul(0.5).Add(p0)
-            hitNormal.Set(n)
-            hitOffset = minOffset
-            hitOffsetMag = minOffsetMag
-          }
-
-          if (elements[id].className === "Life Daphnia" && elements[iid].id === "test") {
-            console.log(`
-              side - ${i0} n: ${n} n•up: ${fmt(n.Dot(new Vec2(0, -1)))}
-              projA - ${projA.map(fmt)}
-              projB - ${projB.map(fmt)}
-              bound - ${mins.map(fmt)}
-              a - min ${fmt(aMin)} max ${fmt(aMax)}
-              b - min ${fmt(bMin)} max ${fmt(bMax)}
-              offsets - l: ${fmt(lOffset)} r: ${fmt(rOffset)}
-              hit - ?: ${didHit} p: ${hitPoint} n: ${hitNormal} o: ${hitOffset}
-            `)
-          }
-        }
-
-        if (didHit) {
-          const $aEl = elements[id]
-          const $bEl = elements[iid]
-
-          debug.Draw(hitPoint, hitNormal.Mul(hitOffset))
-
-          $aEl.classList.toggle("is-hit", true)
-          $bEl.classList.toggle("is-hit", true)
-
-          numFrames = 1
-        }
+        CollideQuad(t, c.quad, wall.quad)
       }
+
+      // collide with screen edge
+      const s = pondSize
+      CollideQuad(t, c.quad, MakeEdge(0, 0, s.x, 0))
+      CollideQuad(t, c.quad, MakeEdge(s.x, 0, s.x, s.y))
+      CollideQuad(t, c.quad, MakeEdge(s.x, s.y, 0, s.y))
+      CollideQuad(t, c.quad, MakeEdge(0, s.y, 0, 0))
     }
   }
 
-  function fmt(num) {
-    return num.toFixed(4)
+  /**
+   * @param {number} x0
+   * @param {number} y0
+   * @param {number} x1
+   * @param {number} y1
+   **/
+  function MakeEdge(x0, y0, x1, y1) {
+    const quad = Collider.Temp
+
+    // create the edge
+    quad[0].x = x0
+    quad[0].y = y0
+    quad[1].x = x1
+    quad[1].y = y1
+
+    // duplicate the edge on the back two points
+    quad[2].x = x0
+    quad[2].y = y0
+    quad[3].x = x1
+    quad[3].y = y1
+
+    return quad
+  }
+
+  /**
+   * @param {Transform} t
+   * @param {Vec2[]} a
+   * @param {Vec2[]} b
+   **/
+  function CollideQuad(t, a, b) {
+    // check collisions using separating axis theorem; we'll call
+    // - a: this quad
+    // - b: the quad we're testing against
+
+    // the collision is a hit unless we find a separating axis
+    let didHit = true
+    let hitPoint = Vec2.Temp[0]
+    let hitNormal = Vec2.Temp[1]
+    let hitOffset = 0
+    let hitOffsetMag = Number.MAX_VALUE
+
+    // for each side of the the other quad
+    for (let i0 = 0; i0 < 4 && didHit; i0++) {
+      const i1 = (i0 + 1) % 4
+
+      // find the endpoints
+      const p0 = b[i0]
+      const p1 = b[i1]
+
+      // find the normal
+      const bN = Vec2.Temp[2]
+      bN.x = p0.y - p1.y
+      bN.y = p1.x - p0.x
+      bN.Normalize()
+
+      // find the minimum & maximum projection of each quad along the normal
+      let aMin = Number.MAX_VALUE
+      let aMax = -aMin
+      let bMin = aMin
+      let bMax = -aMin
+
+      // ...by projecting each point on both quads onto the normal
+      for (let j0 = 0; j0 < 4; j0++) {
+        const aDotN = bN.Dot(a[j0])
+        const bDotN = bN.Dot(b[j0])
+
+        if (aDotN < aMin) {
+          aMin = aDotN
+        }
+
+        if (aDotN > aMax) {
+          aMax = aDotN
+        }
+
+        if (bDotN < bMin) {
+          bMin = bDotN
+        }
+
+        if (bDotN > bMax) {
+          bMax = bDotN
+        }
+      }
+
+      // translate projections w/ the edge of this side (bMax) @ the origin (0)
+      aMin -= bMax
+      aMax -= bMax
+      bMin -= bMax
+
+      // (translate bMax last)
+      bMax -= bMax
+
+      // calculate offsets to project out of an overlap
+      let lOffset = bMax - aMin
+      if (lOffset < 0) {
+        lOffset = Number.MAX_VALUE
+      }
+
+      let rOffset = bMin - aMax
+      if (rOffset > 0) {
+        rOffset = Number.MAX_VALUE
+      }
+
+      const lOffsetMag = Math.abs(lOffset)
+      const rOffsetMag = Math.abs(rOffset)
+
+      // choose the offset that would be the smallest overlap
+      let minOffset = lOffset
+      let minOffsetMag = lOffsetMag
+
+      if (rOffsetMag < lOffsetMag) {
+        minOffset = rOffset
+        minOffsetMag = rOffsetMag
+      }
+
+      // the max overlap is the sum of the lengths of a and b. if the min offset is less than this, it's an
+      // overlap. otherwise, this is a separating axis & it's a miss
+      const aLen = aMax - aMin
+      const bLen = bMax - bMin
+      didHit = minOffsetMag < aLen + bLen
+
+      // if it hit, find the smallest overlap to project out of the collision
+      if (didHit && minOffsetMag < hitOffsetMag) {
+        hitPoint.Set(p1).Sub(p0).Scl(0.5).Add(p0)
+        hitNormal.Set(bN)
+        hitOffset = minOffset
+        hitOffsetMag = minOffsetMag
+      }
+    }
+
+    if (didHit) {
+      const offset = hitNormal.Temp(3).Scl(hitOffset).Div(bodySize).Scl(100)
+      t.pos.Add(offset)
+    }
   }
 
   /**
@@ -872,6 +956,13 @@ description: welcome to the pondlife website
   }
 
   /**
+   * @param {number} num
+   **/
+  function Fmt(num) {
+    return num.toFixed(4)
+  }
+
+  /**
    * @param {HTMLElement} $el
    * @param {string} name
    * @param {number} value
@@ -941,7 +1032,7 @@ description: welcome to the pondlife website
       ctx.strokeStyle = "lime"
       for (const ray of this.rays) {
         const p0 = ray.src
-        const p1 = ray.dir.Temp().Add(ray.src)
+        const p1 = ray.dir.Temp(0).Add(ray.src)
 
         ctx.beginPath()
         ctx.ellipse(p0.x, p0.y, 2, 2, 0, 0, 2 * Math.PI)
@@ -971,7 +1062,11 @@ description: welcome to the pondlife website
      **/
     OnKeyDown(evt) {
       if (evt.key === " ") {
-        numFrames = numFrames != 0 ? -1 : 1
+        if (numFrames < 0) {
+          numFrames = 0
+        } else {
+          numFrames = 1
+        }
       }
     }
   }
