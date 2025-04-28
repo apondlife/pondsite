@@ -288,6 +288,8 @@ function CreateOrReuseLife($el) {
 function CreateLife($el) {
   const tuning = Tuning.Life
 
+  numEntities += 1
+
   // update the element
   elements.push($el)
 
@@ -416,9 +418,6 @@ function CreateLily($el) {
 function Update(time) {
   // update time
   const delta = time - timePrev
-  if (delta > 1000) {
-    console.log("large delta", delta)
-  }
   timeRemaining += delta
   timePrev = time
 
