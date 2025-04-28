@@ -188,6 +188,13 @@ description: welcome to the pondlife website
     }
 
     /**
+     * @param {Vec2} other
+     **/
+    Project(other) {
+      return this.Scl(this.Dot(other))
+    }
+
+    /**
      * @param {number} len
      * @param {number} angle
      **/
@@ -199,8 +206,12 @@ description: welcome to the pondlife website
 
     // -- queries --
     Mag() {
+      return Math.sqrt(this.SqrMag())
+    }
+
+    SqrMag() {
       const {x, y} = this
-      return Math.sqrt(x * x + y * y)
+      return x * x + y * y
     }
 
     /**
@@ -212,6 +223,22 @@ description: welcome to the pondlife website
 
     toString() {
       return `[${Fmt(this.x)}, ${Fmt(this.y)}]`
+    }
+  }
+
+  class Rng {
+    /**
+     * @param {number} min
+     * @param {number} max
+     **/
+    constructor(min, max) {
+      this.min = min
+      this.max = max
+    }
+
+    // -- queries --
+    Sample() {
+      return Lerp(this.min, this.max, Math.random())
     }
   }
 
@@ -246,6 +273,7 @@ description: welcome to the pondlife website
       this.angle = angle
       this.quad = quad
       this.dirty = true
+      this.didHit = false
     }
   }
 
@@ -315,6 +343,38 @@ description: welcome to the pondlife website
     A: "--a",
   }
 
+  const Tuning = {
+    Life: {
+      Drag: 0.1,
+      Perturbation: {
+        Pct: 0.001,
+        Mag: new Rng(50, 200),
+        Rot: new Rng(0, 2 * Math.PI),
+        Dur: new Rng(0.1, 0.4),
+      },
+      InitialVelocity: {
+        Mag: new Rng(1, 3),
+        Rot: new Rng(0, 2 * Math.PI),
+      },
+    },
+    Water: {
+      X: {
+        Mag: 2,
+        Dur: 8,
+      },
+    },
+    Lily: {
+      X: {
+        Mag: 1,
+        Dur: 10,
+      },
+      Y: {
+        Mag: 1,
+        Dur: 10,
+      },
+    },
+  }
+
   // -- props --
   // the timestamp last frame
   let timePrev = 0
@@ -361,8 +421,14 @@ description: welcome to the pondlife website
   /** @type {Array<Array<Anim>>} */
   const animations = []
 
+  /** @type {Debug} */
+  let debug = null
+
   // -- lifetime --
   function Init() {
+    // the debug utilties, if any
+    // debug = Debug.Insert()
+
     // set elements
     $pond = document.getElementById("pond")
     $pondBody = document.getElementById("pond-body")
@@ -393,6 +459,8 @@ description: welcome to the pondlife website
     }
 
     // bind events
+    window.addEventListener("resize", OnResize)
+
     if (debug != null) {
       document.addEventListener("keydown", debug.OnKeyDown)
     }
@@ -405,6 +473,8 @@ description: welcome to the pondlife website
    * @param {HTMLElement} $el
    **/
   function CreateLife($el) {
+    const tuning = Tuning.Life
+
     numEntities += 1
 
     elements.push($el)
@@ -425,11 +495,12 @@ description: welcome to the pondlife website
       )
     ))
 
-    const mag = Lerp(1, 3, Math.random())
-    const rot = Math.random() * 2 * Math.PI
-    const vel = new Vec2().Circular(mag, rot)
+    const v0 = new Vec2().Circular(
+      tuning.InitialVelocity.Mag.Sample(),
+      tuning.InitialVelocity.Rot.Sample()
+    )
 
-    rigidbodies.push(new Rigidbody(vel))
+    rigidbodies.push(new Rigidbody(v0))
 
     agents.push(new Agent())
 
@@ -464,6 +535,8 @@ description: welcome to the pondlife website
    * @param {HTMLElement} $el
    **/
   function CreateWater($el) {
+    const tuning = Tuning.Water
+
     numEntities += 1
 
     elements.push($el)
@@ -487,7 +560,7 @@ description: welcome to the pondlife website
     agents.push(null)
 
     animations.push([
-      new Anim(Props.X, 2, l, 8 * 1000)
+      new Anim(Props.X, tuning.X.Mag, l, tuning.X.Dur * 1000)
     ])
   }
 
@@ -495,6 +568,8 @@ description: welcome to the pondlife website
    * @param {HTMLElement} $el
    **/
   function CreateLily($el) {
+    const tuning = Tuning.Lily
+
     numEntities += 1
 
     elements.push($el)
@@ -517,8 +592,8 @@ description: welcome to the pondlife website
     agents.push(null)
 
     animations.push([
-      new Anim(Props.X, 1, x, 10 * 1000),
-      new Anim(Props.Y, 1, y, 10 * 1000)
+      new Anim(Props.X, tuning.X.Mag, x, tuning.X.Dur * 1000),
+      new Anim(Props.Y, tuning.Y.Mag, y, tuning.Y.Dur * 1000),
     ])
   }
 
@@ -578,12 +653,20 @@ description: welcome to the pondlife website
    * @param {number} delta
    **/
   function Act(delta) {
-    // for every agents
+    const tuning = Tuning.Life.Perturbation
+
+    // for every agent
     for (let id = 0; id < numEntities; id++) {
       const a = agents[id]
       const r = rigidbodies[id]
       if (a == null || r == null) {
         continue
+      }
+
+      // if this hit something last frame, cancel current acceleration
+      const c = colliders[id]
+      if (c != null && c.didHit) {
+        a.duration = 0
       }
 
       // if there is an an active acceleration, apply it
@@ -592,12 +675,13 @@ description: welcome to the pondlife website
         r.acceleration.Add(a.acceleration)
       }
       // otherwise, randomly select a new one
-      else if (Math.random(0.2)) {
-        a.duration = Lerp(100, 300, Math.random())
+      else if (Math.random() < tuning.Pct) {
+        a.duration = tuning.Dur.Sample() * 1000
 
-        const mag = Lerp(100, 200, Math.random())
-        const rot = Math.random() * 2 * Math.PI
-        a.acceleration.Circular(mag, rot)
+        a.acceleration.Circular(
+          tuning.Mag.Sample(),
+          tuning.Rot.Sample()
+        )
       }
     }
   }
@@ -668,6 +752,8 @@ description: welcome to the pondlife website
    * @param {number} delta
    **/
   function Simulate(delta) {
+    const tuning = Tuning.Life
+
     // for all colliders
     for (let id = 0; id < numEntities; id++) {
       const c = colliders[id]
@@ -691,8 +777,23 @@ description: welcome to the pondlife website
       const a = r.acceleration
       const k = delta / 1000
 
+      // calculate drag opposing accelerated velocity
+      const va = v.Temp(0).Add(a.Temp(1).Scl(k))
+      const vaMag = va.SqrMag()
+      const drag = va.Temp(1).Scl(1 / Math.sqrt(vaMag)).Scl(vaMag * tuning.Drag)
+      const dvMag = drag.Temp(2).Scl(k).SqrMag()
+
+      // if drag would overcome the final velocity, cancel velocity instead to avoid osscilation
+      if (dvMag >= vaMag) {
+        a.Zero().Add(v.Temp(2).Scl(-1 / k))
+      }
+      // otherwise, subtract drag from acceleration
+      else {
+        a.Sub(drag)
+      }
+
       // resolve forces
-      v.Add(a.Temp(0).Scl(k))
+      v.Add(a.Temp(1).Scl(k))
       a.Zero()
 
       // update positions
@@ -704,6 +805,8 @@ description: welcome to the pondlife website
    * @param {number} delta
    **/
   function Collide(delta) {
+    let didHit = false
+
     // for all colliders
     for (let id = 0; id < numEntities; id++) {
       const c = colliders[id]
@@ -721,21 +824,28 @@ description: welcome to the pondlife website
         continue
       }
 
+      // the rigidbody is optional
+      const r = rigidbodies[id]
+
+      // reset collision state
+      c.didHit = false
+
+      // for every wall
       for (let iid = 0; iid < numEntities; iid++) {
         const wall = colliders[iid]
         if (wall == null || wall.tag != "wall") {
           continue
         }
 
-        CollideQuad(t, c.quad, wall.quad)
+        CollideQuad(id, t, c, wall.quad)
       }
 
-      // collide with screen edge
+      // also collide with screen edge
       const s = pondSize
-      CollideQuad(t, c.quad, MakeEdge(0, 0, s.x, 0))
-      CollideQuad(t, c.quad, MakeEdge(s.x, 0, s.x, s.y))
-      CollideQuad(t, c.quad, MakeEdge(s.x, s.y, 0, s.y))
-      CollideQuad(t, c.quad, MakeEdge(0, s.y, 0, 0))
+      CollideQuad(id, t, c, MakeEdge(0, 0, s.x, 0))
+      CollideQuad(id, t, c, MakeEdge(s.x, 0, s.x, s.y))
+      CollideQuad(id, t, c, MakeEdge(s.x, s.y, 0, s.y))
+      CollideQuad(id, t, c, MakeEdge(0, s.y, 0, 0))
     }
   }
 
@@ -764,14 +874,16 @@ description: welcome to the pondlife website
   }
 
   /**
+   * @param {number} id
    * @param {Transform} t
-   * @param {Vec2[]} a
+   * @param {Collider} c
    * @param {Vec2[]} b
    **/
-  function CollideQuad(t, a, b) {
+  function CollideQuad(id, t, c, b) {
     // check collisions using separating axis theorem; we'll call
     // - a: this quad
     // - b: the quad we're testing against
+    const a = c.quad
 
     // the collision is a hit unless we find a separating axis
     let didHit = true
@@ -859,18 +971,34 @@ description: welcome to the pondlife website
       const bLen = bMax - bMin
       didHit = minOffsetMag < aLen + bLen
 
-      // if it hit, find the smallest overlap to project out of the collision
+      // if this side hit, find the smallest overlap to project out of the collision
       if (didHit && minOffsetMag < hitOffsetMag) {
-        hitPoint.Set(p1).Sub(p0).Scl(0.5).Add(p0)
         hitNormal.Set(bN)
         hitOffset = minOffset
         hitOffsetMag = minOffsetMag
+
+        // TODO: this is not accurate, only using it for debugging
+        hitPoint.Set(p1).Sub(p0).Scl(0.5).Add(p0)
       }
     }
 
-    if (didHit) {
+    // if this hit
+    if (didHit && hitOffsetMag !== 0) {
+      c.didHit = true
+
+      // project out of the collision
       const offset = hitNormal.Temp(3).Scl(hitOffset).Div(bodySize).Scl(100)
       t.pos.Add(offset)
+
+      // if this has physics, cancel the velocity in the normal direction
+      const r = rigidbodies[id]
+      if (r != null) {
+        r.velocity.Sub(hitNormal.Temp(3).Project(r.velocity))
+      }
+
+      if (elements[id].className == "Life Stentor") {
+        console.log(hitOffset)
+      }
     }
   }
 
@@ -928,6 +1056,15 @@ description: welcome to the pondlife website
 
     if (debug != null) {
       debug.Render(delta)
+    }
+  }
+
+  // -- events --
+  function OnResize() {
+    for (const c of colliders) {
+      if (c != null) {
+        c.dirty = true
+      }
     }
   }
 
@@ -1070,9 +1207,6 @@ description: welcome to the pondlife website
       }
     }
   }
-
-  // the debug utilties, if any
-  let debug = Debug.Insert()
 
   // -- bootstrap --
   Init()
