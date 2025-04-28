@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# -- consants --
+DST_PATH="dst"
+
 # -- commands --
 # builds the environment-specific eleventy command.
 #

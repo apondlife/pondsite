@@ -38,6 +38,7 @@ done
 Build() {
   # clean the build folder
   if [ -n "$SHOULD_CLEAN" ]; then
+    echo "clean $DST_PATH"
     rm -rf "$DST_PATH"
   fi
 

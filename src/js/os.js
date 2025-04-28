@@ -351,11 +351,13 @@ class Os {
   /** when a visit starts */
   didStartVisit() {
     this.toggleLoading(true)
+    document.dispatchEvent(new CustomEvent("visit:started"))
   }
 
   /** when a visit finishes */
   didFinishVisit() {
     this.toggleLoading(false)
+    document.dispatchEvent(new CustomEvent("visit:finished"))
   }
 }
 
