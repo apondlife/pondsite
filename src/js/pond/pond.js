@@ -121,9 +121,21 @@ class Anim {
   ) {
     this.prop = prop
     this.delta = delta
-    this.initial = initial
     this.duration = duration
+
+    // pick a random start time, if none
     this.elapsed = elapsed >= 0 ? elapsed : Math.random() * duration
+
+    // offset the initial value by the start time to avoid initial jitter
+    this.initial = initial - this.Pct() * delta
+  }
+
+  // -- queries --
+  Pct() {
+    // make animation symmetric: [0..1] -> [0..1..0]
+    let k = this.elapsed / this.duration
+    k = (Math.sin(((2 * k) - 0.5) * Math.PI) / 2) + 0.5
+    return k
   }
 }
 
@@ -822,13 +834,9 @@ function Animate(delta) {
     for (const a of as) {
       a.elapsed = (a.elapsed + delta) % a.duration
 
-      // make animation symmetric: [0..1] -> [0..1..0]
-      let k = a.elapsed / a.duration
-      k = (Math.sin(((2 * k) - 0.5) * Math.PI) / 2) + 0.5
-
       // update position
       const t = transforms[id]
-      t.pos[a.prop] = a.initial + a.delta * k
+      t.pos[a.prop] = a.initial + a.delta * a.Pct()
     }
   }
 }
