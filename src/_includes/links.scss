@@ -71,17 +71,35 @@
   }
 
   // -- links --
-  &-steam {
-    display: flex;
+  &-steam .Steam {
+    display: inline-flex;
     flex-direction: column;
+    font-size: 3rem;
+    text-decoration: none;
 
-    > *:nth-child(1) {
-      font-size: 3rem;
-      transform: rotate(-1deg);
+    span {
+      display: inline-block;
     }
 
-    > *:nth-child(2) {
+    &-prompt {
+      transform: rotate(-1deg);
+
+      .Discone {
+        transform: translateY(0.5rem) rotate(-2deg);
+
+        @include mobile {
+          font-size: 20vw;
+        }
+
+        @include desktop {
+          font-size: 8rem;
+        }
+      }
+    }
+
+    &-link {
       align-self: flex-end;
+      text-decoration: initial;
       transform: rotate(-1deg);
 
       @include mobile {
@@ -92,23 +110,10 @@
         margin-right: 15%;
         font-size: 9rem;
       }
-
-      > a {
-        display: inline-block;
-      }
     }
 
-    .Discone {
-      display: inline-block;
-      transform: translateY(0.5rem) rotate(-2deg);
-
-      @include mobile {
-        font-size: 20vw;
-      }
-
-      @include desktop {
-        font-size: 8rem;
-      }
+    &-name {
+      text-decoration: underline;
     }
   }
 

@@ -14,25 +14,18 @@ description: links to the pondlife socials, steam page, &c. save a linktree!
 
   <ul class="Links-list">
     {% capture steam %}
-      <p>
-        wishlist <span class="Discone">discone</span> on
-      </p>
-
-      <p>
-        {%-
-          render "core/Link"
-            href: "https://store.steampowered.com/app/2888670/pondlife_discone_a_videogame/"
-            text: "steam"
-            external: true
-        -%}
-        <span>?</span>
-      </p>
+      <span class="Steam">
+        <span class="Steam-prompt">wishlist <span><span class="Discone">discone</span> on</span> </span>
+        <br>
+        <span class="Steam-link"><span class="Steam-name">steam</span>?</span>
+      </span>
     {% endcapture %}
 
     {%
       render "links/Link"
         name: "steam"
-        body: steam
+        href: "https://store.steampowered.com/app/2888670/pondlife_discone_a_videogame/"
+        text: steam
     %}
 
     <h2 class="Links-listHeader">
