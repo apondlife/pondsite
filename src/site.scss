@@ -38,6 +38,23 @@ a {
 
 .Discone {
   color: $color-discone;
+  position: relative;
+
+  &-videogame {
+    display: inline-block;
+    position: absolute;
+    visibility: hidden;
+    top: 0;
+    right: -2em;
+    font-size: 0.15em;
+    color: initial;
+    white-space: pre;
+    transform: rotate(5deg);
+  }
+
+  &:hover &-videogame {
+    visibility: visible;
+  }
 }
 
 // -- Loading --
