@@ -37,12 +37,12 @@ a {
 }
 
 .Discone {
-  color: $color-discone;
   position: relative;
+  color: $color-discone;
 
   &-videogame {
-    display: inline-block;
     position: absolute;
+    display: inline-block;
     visibility: hidden;
     top: 0;
     right: -2em;

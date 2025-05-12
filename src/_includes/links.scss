@@ -71,11 +71,14 @@
   }
 
   // -- links --
+  &-steam {
+    font-size: 3rem;
+    text-decoration: none;
+  }
+
   .Steam {
     display: inline-flex;
     flex-direction: column;
-    font-size: 3rem;
-    text-decoration: none;
 
     span {
       display: inline-block;
